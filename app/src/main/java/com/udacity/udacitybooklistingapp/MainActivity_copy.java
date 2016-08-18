@@ -3,7 +3,6 @@ package com.udacity.udacitybooklistingapp;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.text.TextUtils;
 import android.util.Log;
 import android.widget.ListView;
 
@@ -20,12 +19,15 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity_copy extends ActionBarActivity {
 
-    ArrayList<Model> modelArrayList = new ArrayList<>();
-    Model model;
+    ArrayList<Model> modelArrayList;
+
+    ListView listView;
+    ModelAdapter adapter;
 
 
     private static final String LOG_TAG = MainActivity_copy.class.getSimpleName();
@@ -38,18 +40,23 @@ public class MainActivity_copy extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        modelArrayList = new ArrayList<>();
+
+        listView = (ListView) findViewById(R.id.list);
+        adapter = new ModelAdapter(this, modelArrayList);
+        listView.setAdapter(adapter);
 
         GoogleAsyncTask task = new GoogleAsyncTask();
         task.execute();
     }
 
 
-    private void updateUi(Model model) {
+    private void updateUi(List<Model> mdArrayList) {
 
-        ListView listView = (ListView) findViewById(R.id.list);
-        final ModelAdapter adapter = new ModelAdapter(this, modelArrayList);
-        listView.setAdapter(adapter);
-
+        Log.d("updateUi", "Model list: " + mdArrayList.toString());
+        adapter.clear();
+        adapter.addAll(mdArrayList);
+        adapter.notifyDataSetChanged();
     }
 
     private class GoogleAsyncTask extends AsyncTask<URL, Void, ArrayList<Model>> {
@@ -63,26 +70,24 @@ public class MainActivity_copy extends ActionBarActivity {
             String jsonResponse = "";
             try {
                 jsonResponse = makeHttpRequest(url);
+                Log.d("doInBackground", "" + jsonResponse);
             } catch (IOException e) {
                 // TODO Handle the IOException
             }
 
             // Extract relevant fields from the JSON response and create an {@link Event} object
 
-            modelArrayList = extractFeatureFromJson(jsonResponse);
-
             // Return the {@link Event} object as the result fo the {@link TsunamiAsyncTask}
-            return modelArrayList;
+            return extractFeatureFromJson(jsonResponse);
         }
 
         @Override
-        protected void onPostExecute(ArrayList<Model> model) {
-            if (model == null) {
+        protected void onPostExecute(ArrayList<Model> modelList) {
+            if (modelList == null) {
                 return;
             }
-
-            for (Model m : model) {
-                updateUi(m);
+            {
+                updateUi(modelList);
             }
         }
 
@@ -152,16 +157,12 @@ public class MainActivity_copy extends ActionBarActivity {
 
         private ArrayList<Model> extractFeatureFromJson(String googleJSON) {
 
-
-            if (TextUtils.isEmpty(googleJSON)) {
-                return null;
-            }
             try {
                 JSONObject baseJsonResponse = new JSONObject(googleJSON);
 
-                JSONArray itemsArray = baseJsonResponse.getJSONArray("items");
+                JSONArray itemsArray = baseJsonResponse.optJSONArray("items");
 
-                if (itemsArray.length() > 0) {
+                for (int i = 0; i < itemsArray.length(); i++) {
                     JSONObject firstObject = itemsArray.getJSONObject(0);
 
                     JSONObject volumeInfoObject = firstObject.getJSONObject("volumeInfo");
@@ -172,15 +173,18 @@ public class MainActivity_copy extends ActionBarActivity {
 
                     String title = volumeInfoObject.getString("title");
 
-                    model = new Model(authors, title);
+                    Model model = new Model(authors, title);
                     modelArrayList.add(model);
-                    return modelArrayList;
+
                 }
+
 
             } catch (JSONException e1) {
                 e1.printStackTrace();
             }
-            return null;
+
+            return modelArrayList;
+
         }
     }
 
