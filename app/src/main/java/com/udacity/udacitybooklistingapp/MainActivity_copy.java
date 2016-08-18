@@ -39,16 +39,15 @@ public class MainActivity_copy extends ActionBarActivity {
         setContentView(R.layout.activity_main);
 
 
-
         GoogleAsyncTask task = new GoogleAsyncTask();
         task.execute();
     }
 
 
-    private void updateUi(Model googleBooks) {
+    private void updateUi(Model model) {
 
-        ListView listView=(ListView)findViewById(R.id.list);
-        final ModelAdapter adapter= new ModelAdapter(this, modelArrayList);
+        ListView listView = (ListView) findViewById(R.id.list);
+        final ModelAdapter adapter = new ModelAdapter(this, modelArrayList);
         listView.setAdapter(adapter);
 
     }
@@ -162,8 +161,8 @@ public class MainActivity_copy extends ActionBarActivity {
 
                 JSONArray itemsArray = baseJsonResponse.getJSONArray("items");
 
-                for (int i = 0; i < itemsArray.length(); i++) {
-                    JSONObject firstObject = itemsArray.getJSONObject(i);
+                if (itemsArray.length() > 0) {
+                    JSONObject firstObject = itemsArray.getJSONObject(0);
 
                     JSONObject volumeInfoObject = firstObject.getJSONObject("volumeInfo");
                     String authors = volumeInfoObject.getString("authors");
