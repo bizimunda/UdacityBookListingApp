@@ -3,8 +3,11 @@ package com.udacity.udacitybooklistingapp;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
-import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ListView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -18,66 +21,92 @@ import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class MainActivity extends ActionBarActivity {
 
+    private EditText editTextSearch;
+    private Button btnSearch;
 
+    private ArrayList<Model> modelArrayList;
+    private ListView listView;
+    private ModelAdapter adapter;
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
-
-    private static final String GOOGLE_REQUEST_URL =
-            "https://www.googleapis.com/books/v1/volumes?q=android&maxResults=1";
+    private static final String GOOGLE_REQUEST_URL ="https://www.googleapis.com/books/v1/volumes?q=";
+    private static final String maxResults="&maxResults=10";
+    String final_url;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        GoogleAsyncTask task = new GoogleAsyncTask();
-        task.execute();
+        editTextSearch=(EditText)findViewById(R.id.et_main_search);
+        btnSearch= (Button) findViewById(R.id.btn_main_search);
+        listView = (ListView) findViewById(R.id.list);
+
+        btnSearch.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                modelArrayList.clear();
+                String searchText= editTextSearch.getText().toString();
+                final_url=GOOGLE_REQUEST_URL+searchText+maxResults;
+
+                GoogleAsyncTask task = new GoogleAsyncTask();
+                task.execute();
+                editTextSearch.setText("");
+
+            }
+        });
+
+        modelArrayList = new ArrayList<>();
+        adapter = new ModelAdapter(this, modelArrayList);
+        listView.setAdapter(adapter);
+
     }
 
 
-    private void updateUi(Model googleBooks) {
-/*
-        TextView title = (TextView) findViewById(R.id.activity_main_title);
-        title.setText("Title: " + googleBooks.getTitle());
+    private void updateUi(List<Model> mdArrayList) {
 
-        TextView authorName = (TextView) findViewById(R.id.activity_main_autor);
-        authorName.setText("Author Name: " + googleBooks.getAuthors());
-*/
+        Log.d("updateUi", "Model list: " + mdArrayList.toString());
+        adapter.addAll(mdArrayList);
+        adapter.notifyDataSetChanged();
+
     }
 
-    private class GoogleAsyncTask extends AsyncTask<URL, Void, Model> {
+    private class GoogleAsyncTask extends AsyncTask<URL, Void, ArrayList<Model>> {
 
         @Override
-        protected Model doInBackground(URL... urls) {
+        protected ArrayList<Model> doInBackground(URL... urls) {
             // Create URL object
-            URL url = createUrl(GOOGLE_REQUEST_URL);
+            URL url = createUrl(final_url);
 
             // Perform HTTP request to the URL and receive a JSON response back
             String jsonResponse = "";
             try {
                 jsonResponse = makeHttpRequest(url);
+
             } catch (IOException e) {
                 // TODO Handle the IOException
             }
-
             // Extract relevant fields from the JSON response and create an {@link Event} object
-            Model model = extractFeatureFromJson(jsonResponse);
-
             // Return the {@link Event} object as the result fo the {@link TsunamiAsyncTask}
-            return model;
+            return extractFeatureFromJson(jsonResponse);
         }
 
         @Override
-        protected void onPostExecute(Model model) {
-            if (model == null) {
+        protected void onPostExecute(ArrayList<Model> modelList) {
+            if (modelList == null) {
                 return;
             }
+            {
+                updateUi(modelList);
+                Log.i("ModelList",modelList.toString());
 
-            updateUi(model);
+            }
         }
 
         private URL createUrl(String stringUrl) {
@@ -144,37 +173,38 @@ public class MainActivity extends ActionBarActivity {
             return output.toString();
         }
 
-        private Model extractFeatureFromJson(String googleJSON) {
+        private ArrayList<Model> extractFeatureFromJson(String googleJSON) {
+            Model model;
 
-
-
-            if (TextUtils.isEmpty(googleJSON)) {
-                return null;
-            }
             try {
                 JSONObject baseJsonResponse = new JSONObject(googleJSON);
-
-                JSONArray itemsArray = baseJsonResponse.getJSONArray("items");
+                JSONArray itemsArray = baseJsonResponse.optJSONArray("items");
 
                 for (int i = 0; i < itemsArray.length(); i++) {
                     JSONObject firstObject = itemsArray.getJSONObject(i);
-
                     JSONObject volumeInfoObject = firstObject.getJSONObject("volumeInfo");
-                    String authors = volumeInfoObject.getString("authors");
-                    authors = authors.replace("[", "");
-                    authors = authors.replace("]", "");
-                    authors = authors.replace("\"", "");
 
                     String title = volumeInfoObject.getString("title");
+                    String authors;
 
+                    if(volumeInfoObject.has("authors")){
+                        authors = volumeInfoObject.getString("authors");
+                        authors = authors.replace("[", "");
+                        authors = authors.replace("]", "");
+                        authors = authors.replace("\"", "");
 
-                    return new Model(authors, title);
-
+                        model = new Model(authors, title);
+                        modelArrayList.add(model);
+                    } else {
+                        model = new Model("No authors", title);
+                        Log.i("Model", model.toString());
+                        modelArrayList.add(model);
+                    }
                 }
             } catch (JSONException e1) {
                 e1.printStackTrace();
             }
-            return null;
+            return modelArrayList;
         }
     }
 
