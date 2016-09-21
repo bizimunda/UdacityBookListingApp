@@ -35,25 +35,27 @@ public class MainActivity extends ActionBarActivity {
     private ModelAdapter adapter;
 
     private static final String LOG_TAG = MainActivity.class.getSimpleName();
-    private static final String GOOGLE_REQUEST_URL ="https://www.googleapis.com/books/v1/volumes?q=";
-    private static final String maxResults="&maxResults=10";
-    String final_url;
+    private static final String GOOGLE_REQUEST_URL = "https://www.googleapis.com/books/v1/volumes?q=";
+    private static final String maxResults = "&maxResults=10";
+    private String final_url;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        editTextSearch=(EditText)findViewById(R.id.et_main_search);
-        btnSearch= (Button) findViewById(R.id.btn_main_search);
+
+        editTextSearch = (EditText) findViewById(R.id.et_main_search);
+        btnSearch = (Button) findViewById(R.id.btn_main_search);
         listView = (ListView) findViewById(R.id.list);
 
         btnSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 modelArrayList.clear();
-                String searchText= editTextSearch.getText().toString();
-                final_url=GOOGLE_REQUEST_URL+searchText+maxResults;
+                String searchText = editTextSearch.getText().toString();
+                final_url = GOOGLE_REQUEST_URL + searchText + maxResults;
 
                 GoogleAsyncTask task = new GoogleAsyncTask();
                 task.execute();
@@ -66,15 +68,31 @@ public class MainActivity extends ActionBarActivity {
         adapter = new ModelAdapter(this, modelArrayList);
         listView.setAdapter(adapter);
 
+
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        outState.putParcelableArrayList("listView", modelArrayList);
+        // Always call the superclass so it can save the view hierarchy state
+        super.onSaveInstanceState(outState);
+    }
+
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        // Always call the superclass so it can restore the view hierarchy
+        super.onRestoreInstanceState(savedInstanceState);
+        modelArrayList = savedInstanceState.getParcelableArrayList("listView");
+        adapter = new ModelAdapter(this, modelArrayList);
+        listView.setAdapter(adapter);
+
     }
 
 
     private void updateUi(List<Model> mdArrayList) {
-
-        Log.d("updateUi", "Model list: " + mdArrayList.toString());
         adapter.addAll(mdArrayList);
         adapter.notifyDataSetChanged();
-
     }
 
     private class GoogleAsyncTask extends AsyncTask<URL, Void, ArrayList<Model>> {
@@ -104,7 +122,7 @@ public class MainActivity extends ActionBarActivity {
             }
             {
                 updateUi(modelList);
-                Log.i("ModelList",modelList.toString());
+                Log.i("ModelList", modelList.toString());
 
             }
         }
@@ -187,7 +205,7 @@ public class MainActivity extends ActionBarActivity {
                     String title = volumeInfoObject.getString("title");
                     String authors;
 
-                    if(volumeInfoObject.has("authors")){
+                    if (volumeInfoObject.has("authors")) {
                         authors = volumeInfoObject.getString("authors");
                         authors = authors.replace("[", "");
                         authors = authors.replace("]", "");
