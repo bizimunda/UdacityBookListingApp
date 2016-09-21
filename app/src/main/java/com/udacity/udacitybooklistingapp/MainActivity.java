@@ -1,5 +1,8 @@
 package com.udacity.udacitybooklistingapp;
 
+import android.content.Context;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
@@ -8,6 +11,8 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -29,6 +34,7 @@ public class MainActivity extends ActionBarActivity {
 
     private EditText editTextSearch;
     private Button btnSearch;
+    private TextView tvMainEmptyListView;
 
     private ArrayList<Model> modelArrayList;
     private ListView listView;
@@ -45,30 +51,35 @@ public class MainActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         editTextSearch = (EditText) findViewById(R.id.et_main_search);
         btnSearch = (Button) findViewById(R.id.btn_main_search);
         listView = (ListView) findViewById(R.id.list);
 
+
         btnSearch.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                modelArrayList.clear();
-                String searchText = editTextSearch.getText().toString();
-                final_url = GOOGLE_REQUEST_URL + searchText + maxResults;
 
-                GoogleAsyncTask task = new GoogleAsyncTask();
-                task.execute();
-                editTextSearch.setText("");
+                ConnectivityManager connMgr = (ConnectivityManager)
+                        getSystemService(Context.CONNECTIVITY_SERVICE);
+                NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+                if (networkInfo != null && networkInfo.isConnected()) {
+                    modelArrayList.clear();
+                    String searchText = editTextSearch.getText().toString();
+                    final_url = GOOGLE_REQUEST_URL + searchText.replaceAll(" ", "%20") + maxResults;
 
+                    GoogleAsyncTask task = new GoogleAsyncTask();
+                    task.execute();
+                    editTextSearch.setText("");
+                } else {
+                    Toast.makeText(MainActivity.this, "No data connection", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
         modelArrayList = new ArrayList<>();
         adapter = new ModelAdapter(this, modelArrayList);
         listView.setAdapter(adapter);
-
-
     }
 
     @Override
@@ -86,7 +97,6 @@ public class MainActivity extends ActionBarActivity {
         modelArrayList = savedInstanceState.getParcelableArrayList("listView");
         adapter = new ModelAdapter(this, modelArrayList);
         listView.setAdapter(adapter);
-
     }
 
 
@@ -106,24 +116,21 @@ public class MainActivity extends ActionBarActivity {
             String jsonResponse = "";
             try {
                 jsonResponse = makeHttpRequest(url);
-
             } catch (IOException e) {
-                // TODO Handle the IOException
             }
-            // Extract relevant fields from the JSON response and create an {@link Event} object
-            // Return the {@link Event} object as the result fo the {@link TsunamiAsyncTask}
             return extractFeatureFromJson(jsonResponse);
+
         }
 
         @Override
         protected void onPostExecute(ArrayList<Model> modelList) {
             if (modelList == null) {
+                tvMainEmptyListView= (TextView) findViewById(R.id.tv_main_emptyListView);
+                listView.setEmptyView(tvMainEmptyListView);
                 return;
             }
             {
                 updateUi(modelList);
-                Log.i("ModelList", modelList.toString());
-
             }
         }
 
@@ -162,8 +169,6 @@ public class MainActivity extends ActionBarActivity {
                 }
 
             } catch (IOException e) {
-                // TODO: Handle the exception
-                Log.e("MainActivity", "Problem receiving the earthQuake JSON results: ", e);
 
             } finally {
                 if (urlConnection != null) {
